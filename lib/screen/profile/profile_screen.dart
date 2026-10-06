@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-
+import '../auth/login_screen.dart';
 import 'package:tuku/model/user_model.dart';
 import 'package:tuku/services/auth_service.dart';
-import 'package:tuku/services/user_sevice.dart';
+import 'package:tuku/services/user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -55,26 +55,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    try {
-      await _authService.logout();
+  try {
+    await _authService.logout();
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You have been logged out.'),
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(),
+      ),
+      (route) => false,
+    );
+  } catch (_) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Could not log out. Please try again.',
         ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not log out. Please try again.'),
-        ),
-      );
-    }
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

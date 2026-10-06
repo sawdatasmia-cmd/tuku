@@ -19,7 +19,9 @@ class UserService {
   }) async {
     final normalizedUsername = username.trim().toLowerCase();
 
-    final usernameReference = _usernames.doc(normalizedUsername);
+    final usernameReference =
+        _usernames.doc(normalizedUsername);
+
     final userReference = _users.doc(id);
 
     await _firestore.runTransaction((transaction) async {
@@ -38,12 +40,18 @@ class UserService {
         isOnline: true,
       );
 
-      transaction.set(userReference, user.toMap());
+      transaction.set(
+        userReference,
+        user.toMap(),
+      );
 
-      transaction.set(usernameReference, {
-        'uid': id,
-        'username': normalizedUsername,
-      });
+      transaction.set(
+        usernameReference,
+        {
+          'uid': id,
+          'username': normalizedUsername,
+        },
+      );
     });
   }
 
@@ -54,10 +62,14 @@ class UserService {
       return null;
     }
 
-    return TukuUser.fromMap(document.data()!);
+    return TukuUser.fromMap(
+      document.data()!,
+    );
   }
 
-  Future<TukuUser?> getUserByUsername(String username) async {
+  Future<TukuUser?> getUserByUsername(
+    String username,
+  ) async {
     final normalizedUsername = username
         .trim()
         .toLowerCase()
@@ -71,8 +83,21 @@ class UserService {
       return null;
     }
 
-    final uid = usernameDocument.data()!['uid'] as String;
+    final uid =
+        usernameDocument.data()!['uid'] as String;
 
     return getUserProfile(uid);
+  }
+
+  Future<List<TukuUser>> getAllUsers() async {
+    final snapshot = await _users.get();
+
+    return snapshot.docs
+        .map(
+          (document) => TukuUser.fromMap(
+            document.data(),
+          ),
+        )
+        .toList();
   }
 }
