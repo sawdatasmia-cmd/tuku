@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "323711022269",
+    "project_id": "tuku-883f9",
+    "storage_bucket": "tuku-883f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:323711022269:android:4e32892419dacb34d633d4",
+        "android_client_info": {
+          "package_name": "com.example.tuku"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMw9x3TjcqtgVTidW8nitjOBTh5qtjjS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
