@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -40,6 +42,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String? _conversationId;
 
+StreamSubscription<List<TukuMessage>>?
+ _messageSubscription;
+
   bool _isLoading = true;
   bool _isSending = false;
   String? _errorMessage;
@@ -50,109 +55,132 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadConversation();
   }
 
-  Future<void> _loadConversation() async {
-    try {
-      final currentUser = _auth.currentUser;
-
-      if (currentUser == null) {
-        throw Exception('No user is currently logged in.');
-      }
-
-      final conversation =
-          await _conversationService.createOrGetConversation(
-        currentUserId: currentUser.uid,
-        otherUserId: widget.otherUser.id,
-      );
-
-      final messages =
-          await _messageService.getMessages(
-        conversation.id,
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _conversationId = conversation.id;
-        _messages = messages;
-        _isLoading = false;
-      });
-
-      _scrollToBottom();
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoading = false;
-        _errorMessage =
-            'Could not load this conversation.';
-      });
-    }
-  }
-
-  Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
-
-    if (text.isEmpty || _isSending) {
-      return;
-    }
-
+Future<void> _loadConversation() async {
+  try {
     final currentUser = _auth.currentUser;
 
     if (currentUser == null) {
-      return;
+      throw Exception(
+        'No user is currently logged in.',
+      );
     }
 
-    if (_conversationId == null) {
+    final conversation =
+        await _conversationService
+            .createOrGetConversation(
+      currentUserId: currentUser.uid,
+      otherUserId: widget.otherUser.id,
+    );
+
+    if (!mounted) {
       return;
     }
 
     setState(() {
-      _isSending = true;
+      _conversationId = conversation.id;
+      _isLoading = false;
     });
 
-    try {
-      final message =
-          await _messageService.createMessage(
-        conversationId: _conversationId!,
-        senderId: currentUser.uid,
-        text: text,
-      );
+    _listenToMessages(conversation.id);
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
 
+    setState(() {
+      _isLoading = false;
+      _errorMessage =
+          'Could not load this conversation.';
+    });
+  }
+}
+void _listenToMessages(
+  String conversationId,
+) {
+  _messageSubscription?.cancel();
+
+  _messageSubscription =
+      _messageService
+          .watchMessages(conversationId)
+          .listen(
+    (messages) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _messages.add(message);
-        _isSending = false;
+        _messages = messages;
       });
-
-      _messageController.clear();
 
       _scrollToBottom();
-    } catch (e) {
+    },
+    onError: (error) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _isSending = false;
+        _errorMessage =
+            'Could not listen for new messages.';
       });
+    },
+  );
+}
+Future<void> _sendMessage() async {
+  final text = _messageController.text.trim();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Message could not be sent. Please try again.',
-          ),
-        ),
-      );
-    }
+  if (text.isEmpty || _isSending) {
+    return;
   }
 
+  final currentUser = _auth.currentUser;
+
+  if (currentUser == null) {
+    return;
+  }
+
+  if (_conversationId == null) {
+    return;
+  }
+
+  setState(() {
+    _isSending = true;
+  });
+
+  try {
+    await _messageService.createMessage(
+      conversationId: _conversationId!,
+      senderId: currentUser.uid,
+      text: text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    _messageController.clear();
+
+    setState(() {
+      _isSending = false;
+    });
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isSending = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Message could not be sent. Please try again.',
+        ),
+      ),
+    );
+  }
+}
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -169,14 +197,13 @@ class _ChatScreenState extends State<ChatScreen> {
     final time = TimeOfDay.fromDateTime(dateTime);
     return time.format(context);
   }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
+@override
+void dispose() {
+  _messageSubscription?.cancel();
+  _messageController.dispose();
+  _scrollController.dispose();
+  super.dispose();
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

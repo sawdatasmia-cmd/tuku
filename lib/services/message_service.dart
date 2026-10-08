@@ -14,51 +14,52 @@ class MessageService {
         .collection('messages');
   }
 
-Future<TukuMessage> createMessage({
-  required String conversationId,
-  required String senderId,
-  required String text,
-}) async {
-  final conversationReference =
-      _firestore
-          .collection('conversations')
-          .doc(conversationId);
+  Future<TukuMessage> createMessage({
+    required String conversationId,
+    required String senderId,
+    required String text,
+  }) async {
+    final conversationReference =
+        _firestore
+            .collection('conversations')
+            .doc(conversationId);
 
-  final messageReference =
-      conversationReference
-          .collection('messages')
-          .doc();
+    final messageReference =
+        conversationReference
+            .collection('messages')
+            .doc();
 
-  final now = DateTime.now();
+    final now = DateTime.now();
 
-  final message = TukuMessage(
-    id: messageReference.id,
-    conversationId: conversationId,
-    senderId: senderId,
-    text: text,
-    sentAt: now,
-  );
+    final message = TukuMessage(
+      id: messageReference.id,
+      conversationId: conversationId,
+      senderId: senderId,
+      text: text,
+      sentAt: now,
+    );
 
-  final batch = _firestore.batch();
+    final batch = _firestore.batch();
 
-  batch.set(
-    messageReference,
-    message.toMap(),
-  );
+    batch.set(
+      messageReference,
+      message.toMap(),
+    );
 
-  batch.update(
-    conversationReference,
-    {
-      'lastMessage': text,
-      'lastMessageAt': Timestamp.fromDate(now),
-      'lastMessageSenderId': senderId,
-    },
-  );
+    batch.update(
+      conversationReference,
+      {
+        'lastMessage': text,
+        'lastMessageAt': Timestamp.fromDate(now),
+        'lastMessageSenderId': senderId,
+      },
+    );
 
-  await batch.commit();
+    await batch.commit();
 
-  return message;
-}
+    return message;
+  }
+
   Future<List<TukuMessage>> getMessages(
     String conversationId,
   ) async {
@@ -72,5 +73,23 @@ Future<TukuMessage> createMessage({
               TukuMessage.fromMap(document.data()),
         )
         .toList();
+  }
+
+  Stream<List<TukuMessage>> watchMessages(
+    String conversationId,
+  ) {
+    return _messages(conversationId)
+        .orderBy('sentAt')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (document) =>
+                    TukuMessage.fromMap(
+                  document.data(),
+                ),
+              )
+              .toList(),
+        );
   }
 }
